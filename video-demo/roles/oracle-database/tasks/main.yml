@@ -1,0 +1,52 @@
+---
+# tasks file for oracle-database
+
+- name: Check if database exists
+  shell: "{{ oracle_home }}/bin/srvctl config database"
+  environment: "{{oracle_env}}"
+  changed_when: False
+  register: chkdb
+  tags: create_db,delete_db
+
+- name: Create responsefile for database creation
+  template: src=dbca.rsp.j2 dest={{ oracle_stage_directory }}/dbca-{{ oracle_db.name }}.rsp
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: responsefile_db, create_db
+  when: oracle_db.name not in chkdb.stdout and oracle_db.state|upper == 'PRESENT'
+
+- name: Create database
+  shell: "{{ oracle_home }}/bin/dbca -createDatabase -responseFile {{ oracle_stage_directory }}/dbca-{{ oracle_db.name }}.rsp -silent"
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: create_db
+  register: create_db
+  when: oracle_db.name not in chkdb.stdout and oracle_db.state|upper == 'PRESENT'
+
+- name: Print output from Create database
+  debug: var=create_db.stdout_lines
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  when: create_db.changed and oracle_db.name not in chkdb.stdout and oracle_db.state|upper == 'PRESENT'
+  tags: create_db
+
+# - name: Set db_create_file_dest
+#   oracle_parameter:
+#            hostname={{ inventory_hostname }}
+#            service_name={{ oracle_db.name }}
+#            user={{ user }}
+#            password={{ oracle_db.passwd }}
+#            name=db_create_file_dest
+#            value={{ oracle_db.datafile_dest }}
+#            state=present
+#            scope=both
+#   environment: "{{oracle_env}}"
+#   when: oracle_db.name not in chkdb.stdout
+#   tags: param
+- name: Delete database
+  shell: "{{ oracle_home }}/bin/dbca -deleteDatabase -sourceDB {{ oracle_db.name }} -silent"
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: delete_db
+  register: delete_db
+  when: oracle_db.name in chkdb.stdout and oracle_db.state|upper == 'ABSENT'

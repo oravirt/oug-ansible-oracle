@@ -1,0 +1,34 @@
+- name: Manage parameters (cdb)
+  oracle_parameter:
+         hostname={{ inventory_hostname }}
+         service_name={{ oracle_db.name }}
+         user={{ user }}
+         password={{ oracle_passwd }}
+         name={{ item.name }}
+         value="{{ item.value }}"
+         state={{ item.state }}
+         scope={{ item.scope }}
+  environment: "{{oracle_env}}"
+  with_items:
+      - "{{ oracle_db.init_parameters }}"
+  when: oracle_db.init_parameters is defined
+  tags: param
+
+-  name: Manage parameters (pdb)
+   oracle_parameter:
+          hostname={{ inventory_hostname }}
+          service_name={{ item.0.name }}
+          user={{ user }}
+          password={{ oracle_passwd }}
+          name={{ item.1.name }}
+          value="{{ item.1.value}}"
+          state={{ item.1.state }}
+          scope={{ item.1.scope }}
+   environment: "{{oracle_env}}"
+   with_subelements:
+       - "{{ pdbs }}"
+       - init_parameters
+       - flags:
+         skip_missing: True
+   when: item.0 is defined and item.0.state|upper == 'PRESENT'
+   tags: param

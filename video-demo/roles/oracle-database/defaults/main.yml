@@ -1,0 +1,17 @@
+---
+# defaults file for oracle-database
+oracle_home: "{{ oracle_base }}/product/{{ oracle_db.version }}/db"
+oracle_db:
+      name: orcl
+      passwd: Oracle123
+      version: 12.1.0.2
+      cdb: True
+      sample_schema: false
+      total_mb: 1024
+      characterset: AL32UTF8
+      ncharacterset: AL16UTF16
+      datafile_dest: /u01/oradata
+      recoveryfile_dest: /u01/fra
+      listener_name: LISTENER
+      listener_protocols: TCP
+      listener_port: 1521

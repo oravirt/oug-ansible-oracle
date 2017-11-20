@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# Oracle recommended security limits
+
+{% for stuff in oracle_seclimits %}
+{{ oracle_user.name }} {{ stuff.name }} {{ stuff.value }}
+{% endfor %}

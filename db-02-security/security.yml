@@ -1,0 +1,106 @@
+# SETUP:
+
+# Verification
+
+- hosts: all
+  vars:
+    audit_base: /tmp 
+    oracle_env:
+#      ORACLE_HOME: /usr/lib/oracle/12.1/client64
+#      LD_LIBRARY_PATH: /usr/lib/oracle/12.1/client64/lib
+      nothing_to_see_here: just a placeholder
+    paramlist:
+      - name: audit_trail
+        value: XML
+        scope: spfile
+      - name: sec_case_sensitive_logon
+        value: TRUE
+      - name: sec_max_failed_login_attempts
+        value: 3
+      - name: sql92_security
+        value: TRUE
+        scope: spfile
+      - name: resource_manager_plan
+        value: DEFAULT_CDB_PLAN
+  tasks:
+    - name: Read encrypted passwords file
+      include_vars: file=passwords.yml
+       
+    - block:
+    
+        - name: Gather target environment facts
+          local_action:
+            module: oracle_facts
+            ### Target Oracle database connection information
+            hostname: "{{ inventory_hostname }}"
+            port: 1521
+            service_name: orcl12c
+            user: "{{ oracleuser }}"
+            password: "{{ oraclepassword }}"
+          register: dbfacts
+          
+        - debug:
+            var: dbfacts.ansible_facts
+        
+        - pause:
+        
+        - set_fact:
+            audit_dest: "{{ audit_base }}/{{ dbfacts.ansible_facts.parameter.db_unique_name.value|lower }}"
+        
+        - debug:
+            var: audit_dest
+            
+        - name: Create audit destination
+          file:
+            path: "{{ audit_dest }}"
+            owner: oracle
+            group: dba
+            mode: 0770
+            state: directory  
+          
+        # In this case I need the ansible controller machine to connect to the database, therefore need to use local_action module.
+        # Otherwise it would try to connect from the database host, but it does not have cxOracle installed.
+        
+        - name: Manage security related init.ora parameters
+          local_action:
+            module: oracle_parameter
+            ### Target Oracle database connection information
+            hostname: "{{ inventory_hostname }}"
+            port: 1521
+            service_name: orcl12c
+            user: "{{ oracleuser }}"
+            password: "{{ oraclepassword }}"
+            ### 
+            name: "{{ item.name }}"
+            value: "{{ item.value }}"
+            scope: "{{ item.scope | default('both') }}"
+          with_items: "{{ paramlist }}"
+
+        - name: Set audit_file_dest
+          local_action:
+            module: oracle_parameter
+            ### Target Oracle database connection information
+            hostname: "{{ inventory_hostname }}"
+            port: 1521
+            service_name: orcl12c
+            user: "{{ oracleuser }}"
+            password: "{{ oraclepassword }}"
+            ### 
+            name: audit_file_dest
+            value: "{{ audit_dest }}"
+            scope: spfile
+            
+        - name: Increase AWR retention time
+          local_action:
+            module: oracle_awr
+            ### Target Oracle database connection information
+            hostname: "{{ inventory_hostname }}"
+            port: 1521
+            service_name: orcl12c
+            user: "{{ oracleuser }}"
+            password: "{{ oraclepassword }}"
+            ###
+            snapshot_interval_min: 60
+            snapshot_retention_days: 60
+             
+      environment: "{{ oracle_env }}"

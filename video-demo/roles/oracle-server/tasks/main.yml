@@ -1,0 +1,65 @@
+---
+# tasks file for oracle-server
+- name: oracle-server | Create directories
+  file: path={{ item }} state=directory owner={{ oracle_user.name }} group={{ oracle_user.primgroup }} mode=775
+  with_items:
+      - "{{ oracle_home }}"
+      - "{{ oracle_stage_directory }}"
+      - "{{ oracle_stage_directory }}/{{ oracle_db.version }}"
+  tags: directories
+
+- name: oracle-server | Extract files to stage-area
+  unarchive: src={{ item.path }}/{{ item.name }}  dest={{ oracle_stage_directory }}/{{ oracle_db.version }} copy=no
+  args:
+      creates: "{{ oracle_stage_directory }}/{{ oracle_db.version }}/database/install/.oui"
+  with_items:
+    - "{{oracle_binaries}}"
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: unpacksw
+
+- name: oracle-server | Setup response file for Oracle Database Server installation
+  template: src=db-install.rsp.j2 dest={{ oracle_stage_directory }}/{{ oracle_db.version }}-server.rsp
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: responsefile_swdb, oraswdb_install
+  register: swreponsefile
+
+
+- name: oracle-server | Install Oracle Database Server
+  shell: "{{ oracle_stage_directory }}/{{ oracle_db.version }}/database/runInstaller -responseFile {{ oracle_stage_directory }}/{{ oracle_db.version }}-server.rsp -ignorePrereq -ignoreSysPrereqs -silent -waitforcompletion"
+  args:
+      creates: "{{ oracle_home }}/root.sh"
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: oraswdb_install
+  register: oradbinstall
+
+- name: oracle-server | Print output from Oracle Server installation
+  debug: var=oradbinstall.stdout_lines
+  when: oradbinstall.changed
+
+- name: oracle-server | Run oraInst.sh
+  shell: "{{ oracle_inventory_loc }}/orainstRoot.sh"
+  when: oradbinstall is defined and oradbinstall.changed
+  tags: oraswdb_install,orainstsh
+
+- name: oracle-server | Run root.sh
+  shell: "{{ oracle_home }}/root.sh"
+  when: oradbinstall.changed
+  tags: oraswdb_install,rootsh
+
+- name: oracle-server | Add .profile for Oracle installation
+  template: src=dotprofile.j2 dest=/home/{{ oracle_user.name }}/.profile_{{ oracle_db.name }}
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: dotprofile
+
+- name: oracle-server | Customize glogin.sql
+  lineinfile:
+         dest="{{ oracle_home }}/sqlplus/admin/glogin.sql"
+         line='set sqlprompt "_user @ _connect_identifier:>"'
+         backup=yes
+  become: yes
+  become_user: "{{ oracle_user.name }}"
+  tags: glogin

@@ -1,0 +1,22 @@
+- name: Manage tablespace (in pdb)
+  oracle_tablespace:
+             hostname={{ inventory_hostname }}
+             service_name={{ item.0.name }}
+             user={{ user }}
+             password={{ oracle_passwd }}
+             tablespace={{ item.1.name }}
+             size={{ item.1.size }}
+             bigfile={{ item.1.bigfile }}
+             autoextend={{ item.1.autoextend }}
+             next={{ item.1.next }}
+             maxsize={{ item.1.maxsize }}
+             content={{ item.1.content }}
+             state={{ item.1.state }}
+  environment: "{{oracle_env}}"
+  with_subelements:
+      - "{{ pdbs }}"
+      - tablespaces
+      - flags:
+        skip_missing: True
+  when: item.0 is defined and item.0.state|upper == 'PRESENT'
+  tags: tablespace

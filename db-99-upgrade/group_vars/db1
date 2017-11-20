@@ -1,0 +1,19 @@
+replication_group: appgroup1
+dry_run: True
+
+old:
+  oraclehome: /u01/app/oracle/product/11.2.0.4/db
+  sid: db11
+  pdb:
+  dbuniquename: db1
+
+new:
+  oraclehome: /u01/app/oracle/product/12.1.0.2/db
+  sid: db1cdb1
+  pdb: db1
+  dbuniquename: db1cdb
+  appendservice:
+  appendaddservice: "-preferred db1cdb3 -available db1cdb1,db1cdb2"
+  replicat:
+    prefix: a1
+    home: /oradata/goldengate/ogg_12.1.0.2_db_tgt

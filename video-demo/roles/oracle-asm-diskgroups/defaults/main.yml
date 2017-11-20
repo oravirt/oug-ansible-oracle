@@ -1,0 +1,13 @@
+---
+# defaults file for asm-diskgroups
+oracle_home_gi: "{{ oracle_base }}/product/{{ oracle_gi.version }}/grid"
+oracle_home: "{{ oracle_base }}/product/{{ oracle_db.version }}/db"
+oracle_base: /u01/app/oracle
+inventory_location: /u01/app/oraInventory
+oracle_env:
+      ORACLE_HOME: "{{ oracle_home }}"
+      LD_LIBRARY_PATH: "{{ oracle_home }}/lib"
+
+device_list: "{{item.disk | map(attribute='asmdevice') | list }}"
+attr_name:  "{% if item.attributes is defined %}{{item.attributes |default (omit) | map(attribute='name') | list }}{% else %}None{%endif%}"
+attr_value: "{% if item.attributes is defined %}{{item.attributes |default (omit) | map(attribute='value') | list }}{% else %}None{%endif%}"

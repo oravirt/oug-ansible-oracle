@@ -1,0 +1,62 @@
+## The follwoing two will always be created
+- name: Manage generic users (cdb)
+  oracle_user:
+          hostname={{ inventory_hostname }}
+          service_name={{ oracle_db.name }}
+          user={{ user }}
+          password={{ oracle_passwd }}
+          schema={{ item.schema }}
+          schema_password={{ item.schema_password }}
+          state={{ item.state }}
+          default_temp_tablespace={{ item.default_temp_tablespace }}
+          default_tablespace={{ item.default_tablespace }}
+          grants={{ item.grants }}
+          container={{ item.container |default('all')}}
+          update_password=on_create
+  environment: "{{oracle_env}}"
+  with_items:
+     - "{{ cdb_users_generic }}"
+  tags: users
+
+- name: Manage generic users (in pdb)
+  oracle_user:
+          hostname={{ inventory_hostname }}
+          service_name={{ item[0].name }}
+          user={{ user }}
+          password={{ oracle_passwd }}
+          schema={{ item[1].schema }}
+          schema_password={{ item[1].schema_password | default (omit) }}
+          state={{ item[1].state }}
+          default_temp_tablespace={{ item[1].default_temp_tablespace }}
+          default_tablespace={{ item[1].default_tablespace }}
+          grants={{ item[1].grants }}
+          update_password=on_create
+  environment: "{{oracle_env}}"
+  with_nested:
+     - "{{ pdbs }}"
+     - "{{ pdb_users_generic }}"
+  when: item[1] is defined and item[0].state|upper == 'PRESENT'
+  tags: users
+
+## This is optional
+- name: Manage Application Users (in pdb)
+  oracle_user:
+          hostname={{ inventory_hostname }}
+          service_name={{ item.0.name }}
+          user={{ user }}
+          password={{ oracle_passwd }}
+          schema={{ item.1.schema }}
+          schema_password={{ item.1.schema_password | default (omit) }}
+          state={{ item.1.state }}
+          default_temp_tablespace={{ item.1.default_temp_tablespace }}
+          default_tablespace={{ item.1.default_tablespace }}
+          grants={{ item.1.grants }}
+          update_password=on_create
+  environment: "{{oracle_env}}"
+  with_subelements:
+     - "{{ pdbs }}"
+     - application_user
+     - flags:
+       skip_missing: True
+  when: item.1 is defined and item.0.state|upper == 'PRESENT'
+  tags: users

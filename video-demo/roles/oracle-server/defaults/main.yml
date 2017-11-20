@@ -1,0 +1,31 @@
+---
+# defaults file for oracle-server
+
+oracle_base: /u01/app/oracle
+oracle_inventory_loc: /u01/app/oraInventory
+oracle_responsefile:
+
+oracle_home: "{{ oracle_base }}/product/{{ oracle_db.version }}/db"
+oracle_db:
+      name: orcl
+      passwd: Oracle123
+      version: 12.1.0.2
+      cdb: True
+      total_mb: 1024
+      characterset: AL32UTF8
+      ncharacterset: AL16UTF16
+      datafile_dest: /u01/oradata
+      recoveryfile_dest: /u01/fra
+      listener_name: LISTENER
+      listener_protocols: TCP
+      listener_port: 1521
+
+oracle_stage_directory: /u01/stage
+oracle_binaries:
+       - {name: linuxx64_12201_database.zip, path: /media/swrepo/ }
+       #- {name: linuxamd64_12102_database_1of2.zip, path: /media/swrepo/ }
+       #- {name: linuxamd64_12102_database_2of2.zip, path: /media/swrepo/ }
+
+oracle_env:
+     ORACLE_HOME: "{{ oracle_home }}"
+     LD_LIBRARY_PATH: "{{ oracle_home }}/lib"

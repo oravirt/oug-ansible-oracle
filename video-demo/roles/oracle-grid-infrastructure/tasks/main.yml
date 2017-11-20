@@ -1,0 +1,91 @@
+- name: Check if GI is already installed
+  shell: grep "{{ oracle_home_gi }}" "{{ oracle_inventory_loc }}/ContentsXML/inventory.xml" |wc -l
+  tags: checkifgiinstall
+  register: checkgiinstall
+  changed_when: False
+
+- name: Create directories
+  file: path={{ item }} state=directory owner={{ oracle_user.name }} group={{ oracle_user.primgroup }} mode=775
+  with_items:
+      - "{{ oracle_home_gi }}"
+      - "{{ oracle_stage_directory }}"
+      - "{{ oracle_stage_directory }}/{{ oracle_gi.version }}"
+  tags: directories
+
+- name: Extract files to ORACLE_HOME
+  unarchive: src={{ item.path }}/{{ item.name }}  dest={{ oracle_home_gi }} copy=no
+  args:
+      creates: "{{ oracle_home_gi }}/root.sh"
+  with_items:
+    - "{{grid_binaries}}"
+  become: true
+  become_user: "{{ oracle_user.name }}"
+  tags: unpacksw
+
+- name: Add .profile_grid
+  template:
+    src: dotprofile.j2
+    dest: "/home/{{grid_owner}}/.profile_grid"
+    owner: "{{ grid_owner }}"
+    backup: yes
+  with_items: "{{ oracle_home_gi |basename }}"
+  tags: dotprofile
+
+- name: Setup response file for install (GI)
+  template: src=gi-install.rsp.j2 dest="{{ oracle_stage_directory }}/gi_{{ oracle_gi.version }}.rsp" owner="{{ oracle_user.name }}" group={{ oracle_user.primgroup }} mode=775 backup=yes
+  with_items: "{{asm_diskgroups}}"
+  tags:
+    - responsefilegi
+  when: item.diskgroup == crs_diskgroup
+
+- name: Install Grid Infrastructure
+  shell: "{{ oracle_home_gi }}/gridSetup.sh -responseFile {{ oracle_stage_directory }}/gi_{{ oracle_gi.version }}.rsp -waitforcompletion -ignorePrereq -silent"
+  # args:
+  #     creates: "{{ oracle_home_gi }}/bin/oracle"
+  become: yes
+  become_user: "{{ oracle_user.name }}"
+  register: giinstall
+  when: checkgiinstall.stdout == '0'
+
+- debug: var=giinstall.stdout_lines
+  when: giinstall.changed
+
+- name: Run oraInstroot script after installation
+  shell: "{{ oracle_inventory_loc }}/orainstRoot.sh"
+  tags:
+    - runroot
+  when: giinstall.changed
+
+- name: Run root script after installation
+  shell: "{{ oracle_home_gi }}/root.sh"
+  register: rootmaster
+  when: giinstall.changed
+
+- name: Execute ConfigTools
+  shell: "{{ oracle_home_gi }}/gridSetup.sh -executeConfigTools -responseFile {{ oracle_stage_directory }}/gi_{{ oracle_gi.version }}.rsp  -silent"
+  become: yes
+  become_user: "{{ oracle_user.name }}"
+  tags:
+    - runconfigtool
+  ignore_errors: true
+  register: configtool
+  when: giinstall.changed
+
+- name: Customize glogin.sql
+  lineinfile: dest="{{ oracle_home_gi }}/sqlplus/admin/glogin.sql" line='set sqlprompt "_user @ _connect_identifier:>"' backup=yes
+  become: yes
+  become_user: "{{ oracle_user.name }}"
+  tags: glogin
+
+
+- name: Copy cx_Oracle RPM
+  copy: src=files/cx_Oracle-5.2.1-12c-py27-1.x86_64.rpm dest={{ oracle_stage_directory }}/
+  become: true
+  tags: cx_oracle
+
+
+- name: Install cx_Oracle
+  yum: name={{ oracle_stage_directory }}/cx_Oracle-5.2.1-12c-py27-1.x86_64.rpm state=present
+  become: true
+  environment: "{{ oracle_env }}"
+  tags: cx_oracle

@@ -1,0 +1,89 @@
+---
+# defaults file for host
+
+oracle_groups:
+     - dba
+     - oinstall
+oracle_user:
+      name: oracle
+      primgroup: oinstall
+      dbagroup: dba
+      othergroups: dba
+      passwd: "$6$0xHoAXXF$K75HKb64Hcb/CEcr3YEj2LGERi/U2moJgsCK.ztGxLsKoaXc4UBiNZPL0hlxB5ng6GL.gyipfQOOXplzcdgvD0"
+
+filesystems:
+ - fs: /u01
+   vgname: vgora
+   lvname: lvora
+   device: /dev/sdb
+   fstype: ext4
+   lvsize: 100%FREE
+
+install_packages: True
+os_packages:
+    - libselinux-python
+    - procps
+    - module-init-tools
+    - ethtool
+    - bc
+    - bind-utils
+    - nfs-utils
+    - xorg-x11-utils
+    - xorg-x11-xauth
+    - binutils
+    - compat-libstdc++-33
+    - gcc
+    - gcc-c++
+    - glibc
+    - glibc-devel
+    - glibc-devel.i686
+    - libaio
+    - libaio-devel
+    - libgcc
+    - libstdc++
+    - libstdc++-devel
+    - make
+    - sysstat
+    - openssh-clients
+    - compat-libcap1
+    - xorg-x11-xauth
+    - xorg-x11-xinit
+    - libXtst
+    - xdpyinfo
+    - xterm
+    - xsetroot
+    - libXp
+    - libXt
+    - libXtst
+    - ntp
+    - ksh
+    - lvm2
+    - xfsprogs
+    - btrfs-progs
+    - parted
+    - nc
+
+oracle_sysctl:
+      - { name: kernel.shmall, value: 4294967296 }
+      - { name: kernel.shmmax, value: 68719476736 }
+      - { name: kernel.shmmni, value: 4096 }
+      - { name: kernel.sem, value: "250 32000 100 128" }
+      - { name: fs.file-max, value: 6815744 }
+      - { name: fs.aio-max-nr, value: 1048576 }
+      - { name: net.ipv4.ip_local_port_range, value: "9000 65500" }
+      - { name: net.core.rmem_default, value: 262144 }
+      - { name: net.core.rmem_max, value: 4194304 }
+      - { name: net.core.wmem_default, value: 262144 }
+      - { name: net.core.wmem_max, value: 1048576 }
+
+oracle_hugepages:
+      - { name: vm.nr_hugepages, value: "{{ nr_hugepages }}" }
+
+
+oracle_seclimits:
+      - { name: 'soft nproc', value: 2047 }
+      - { name: 'hard nproc', value: 16384 }
+      - { name: 'soft nofile', value: 4096 }
+      - { name: 'hard nofile', value: 65536 }
+      - { name: 'soft memlock', value: "{{ ((0.9 * ansible_memtotal_mb)*1024)|round|int }}" }
+      - { name: 'hard memlock', value: "{{ ((0.9 * ansible_memtotal_mb)*1024)|round|int }}" }

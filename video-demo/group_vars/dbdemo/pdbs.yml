@@ -1,0 +1,29 @@
+
+pdbs:
+  - name: app1_pdb
+    dg: +appdg1
+    cdb: orcl
+    state: present
+    init_parameters:
+        - { name: db_create_file_dest, value: '+APPDG1', state: present, scope: both}
+    services:
+       - { name: appuser_service, oracle_home: "{{ oracle_home }}", state: present }
+    tablespaces:
+       - { name: users, size: 10M, bigfile: True, autoextend: false , next: 5M, maxsize: 500M, content: permanent, state: present }
+       - { name: appuser_data, size: 10M, bigfile: True, autoextend: false , next: 5M, maxsize: 500M, content: permanent, state: present }
+    application_user:
+      - schema: appuser
+        schema_password: "{{ appuser_passwd}}" # appuser
+        state: present
+        default_tablespace: appuser_data
+        default_temp_tablespace: temp
+        grants:
+             - approle1
+    application_roles:
+      - name: approle1
+        role_grants:
+             - create session
+             - create table
+             - select any table
+             - select any dictionary
+        state: present

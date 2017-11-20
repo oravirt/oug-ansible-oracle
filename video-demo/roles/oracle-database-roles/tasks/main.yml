@@ -1,0 +1,34 @@
+- name: Manage application role (pdb)
+  oracle_role:
+        hostname={{ inventory_hostname }}
+        service_name={{ item.0.name }}
+        user={{ user }}
+        password={{ oracle_passwd }}
+        role={{ item.1.name }}
+        state={{ item.1.state }}
+  environment: "{{oracle_env}}"
+  with_subelements:
+     - "{{ pdbs}}"
+     - application_roles
+     - flags:
+       skip_missing: True
+  when: item.0 is defined and item.0.state|upper == 'PRESENT'
+  tags: role
+
+- name: Manage grants to role (pdb)
+  oracle_grants:
+        hostname={{ inventory_hostname }}
+        service_name={{ item.0.name }}
+        user={{ user }}
+        password={{ oracle_passwd }}
+        role={{ item.1.name }}
+        grants="{{ item.1.role_grants }}"
+        state=present
+  environment: "{{oracle_env}}"
+  with_subelements:
+     - "{{ pdbs}}"
+     - application_roles
+     - flags:
+       skip_missing: True
+  when: item.0 is defined and item.0.state|upper == 'PRESENT'
+  tags: role,grant

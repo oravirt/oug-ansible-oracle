@@ -1,0 +1,5 @@
+- name: Manage pdb(s)
+  hosts: dbdemo
+  become: yes
+  roles:
+     - oracle-database-pdb

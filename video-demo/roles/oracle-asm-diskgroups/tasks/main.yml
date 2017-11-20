@@ -1,0 +1,18 @@
+---
+# tasks file for asm-diskgroups
+- name: asm_diskgroups | Manage diskgroups
+  oracle_asmdg:
+        un=sys
+        pw={{ grid_passwd }}
+        sn=+ASM
+        host={{ inventory_hostname }}
+        oh={{ oracle_home_gi }}
+        name={{ item.diskgroup }}
+        disks={{ device_list }}
+        redundancy={{ item.redundancy |default(omit)}}
+        attribute_name={{ attr_name  |default (omit)}}
+        attribute_value={{ attr_value |default (omit)}}
+        state={{ item.state }}
+  environment: "{{ oracle_env }}"
+  with_items: "{{ asm_diskgroups }}"
+  tags: diskgroup

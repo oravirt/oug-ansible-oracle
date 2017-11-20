@@ -1,0 +1,16 @@
+- name: Manage pdb(s)
+  oracle_pdb:
+        name="{{ item.name }}"
+        dfd="{{ item.dg }}"
+        sourcedb="{{ item.cdb }}"
+        state={{ item.state}}
+        host="{{ inventory_hostname }}"
+        un=sys
+        pw="{{ oracle_passwd }}"
+        sn="{{ item.cdb }}"
+        mode=sysdba
+  environment: "{{oracle_env}}"
+  with_items:
+      - "{{ pdbs }}"
+  when: pdbs is defined
+  tags: pdb

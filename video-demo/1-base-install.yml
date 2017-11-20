@@ -1,0 +1,11 @@
+- name: Full installation
+  hosts: dbdemo
+  become: yes
+  roles:
+     - host
+     - host-storage-asmlib
+     - host-storage
+     - oracle-grid-infrastructure
+     - oracle-server
+     - oracle-asm-diskgroups
+     - oracle-database

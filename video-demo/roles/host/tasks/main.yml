@@ -1,0 +1,65 @@
+---
+# tasks file for host
+- name: Install packages
+  yum: name={{ item }} state=installed
+  with_items: "{{os_packages}}"
+  tags: os_packages, oscheck
+  when: install_packages
+
+- name: Disable firewall
+  service: name=firewalld state=stopped enabled=no
+
+# - name: Disable selinux (permanently)
+#   selinux: state=disabled
+#
+# - name: Disable selinux (runtime)
+#   shell: setenforce 0
+#   ignore_errors: true
+
+
+- name: Add group(s)
+  group: name={{ item }} state=present
+  with_items:
+      - "{{oracle_groups}}"
+  tags: group
+
+- name: Add Oracle user
+  user: name={{ oracle_user.name }}  group={{ oracle_user.primgroup }} groups={{ oracle_user.othergroups }} generate_ssh_key=yes append=yes state=present password={{ oracle_user.passwd }}
+  tags: user
+
+- name: Kernel settings
+  sysctl: name={{ item.name }} value="{{ item.value }}" state=present reload=yes
+  with_items: "{{oracle_sysctl}}"
+  tags: sysctl
+
+- name: PAM config
+  lineinfile: dest=/etc/pam.d/login state=present line="session required pam_limits.so"
+  tags: pamconfig
+
+- name: Security limits
+  template: src=templates/oracle-seclimits.conf.j2 dest=/etc/security/limits.d/99-oracle-limits.conf backup=yes
+  tags: seclimit
+
+
+- name: filesystem | Create vg
+  lvg: vg={{ item.vgname }} pvs={{ item.device }} state=present
+  with_items: "{{filesystems}}"
+  tags: hostfs
+
+- name: filesystem | create lv
+  lvol: vg={{ item.vgname }} lv={{ item.lvname }} size={{ item.lvsize }} state=present shrink=no
+  with_items:
+      - "{{filesystems}}"
+  tags: hostfs
+
+- name: filesystem | create fs
+  filesystem: fstype={{ item.fstype }} dev=/dev/{{ item.vgname }}/{{ item.lvname }}
+  with_items:
+      - "{{filesystems}}"
+  tags: hostfs
+
+- name: filesytem | mount dir
+  mount: name={{ item.fs }} src=/dev/{{ item.vgname }}/{{ item.lvname }} dump=0 passno=0 fstype={{ item.fstype }} state=mounted
+  with_items:
+      - "{{filesystems}}"
+  tags: hostfs

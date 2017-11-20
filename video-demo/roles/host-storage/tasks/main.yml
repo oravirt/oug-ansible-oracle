@@ -1,0 +1,32 @@
+---
+# tasks file for host-config-storage
+
+- name: storage | partition devices
+  shell: parted {{ item.1.device }} "mklabel gpt mkpart primary 1 -1"
+  args:
+     creates: "{{ item.1.device}}1"
+  with_subelements:
+      - "{{asm_diskgroups}}"
+      - disk
+  when: item.0.state|upper == 'PRESENT'
+  tags: storage,partition
+
+
+- name: storage | create asmlib labels
+  shell: service oracleasm createdisk {{item.1.asmlabel}} "{{ item.1.device }}1"
+  args:
+     creates: "/dev/oracleasm/disks/{{ item.1.asmlabel | upper}}"
+  with_subelements:
+      - "{{asm_diskgroups}}"
+      - disk
+  when: item.0.state|upper == 'PRESENT'
+  tags: storage, asmlabel
+
+- name: storage | check for disks
+  shell: service oracleasm scandisks && service oracleasm listdisks warn=False
+  register: listdisks
+  tags: storage, asmlabel,checkasmdisks
+  changed_when: False
+
+- debug: var=listdisks.stdout_lines
+  tags: storage,asmlabel,checkasmdisks

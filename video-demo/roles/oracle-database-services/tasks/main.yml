@@ -1,0 +1,41 @@
+
+- name: Create services (pdb)
+  oracle_services:
+        name={{ item.1.name }}
+        database_name={{ item.0.cdb }}
+        pi={{ item.1.pi |default(omit) }}
+        ai={{ item.1.ai|default(omit) }}
+        pdb={{ item.0.name | default(omit) }}
+        state={{ item.1.state }}
+        host=localhost
+        port=1521
+        un={{ user }}
+        pw={{ oracle_db.passwd }}
+        sn={{ item.0.name }}
+  environment: "{{oracle_env}}"
+  with_subelements:
+      - "{{ pdbs }}"
+      - services
+      - flags:
+        skip_missing: True
+  when: item.1 is defined and item.0.state|upper == 'PRESENT'
+  tags: create_service,services
+
+- name: Start services
+  oracle_services:
+         name={{ item.1.name }}
+         database_name={{ item.0.cdb }}
+         pdb={{ item.0.name | default(omit) }}
+         state={{ item.0.state}}
+         host={{ inventory_hostname }}
+         un={{ user }}
+         pw={{ oracle_db.passwd }}
+         sn={{ item.0.name }}
+  environment: "{{oracle_env}}"
+  with_subelements:
+      - "{{ pdbs }}"
+      - services
+      - flags:
+        skip_missing: True
+  when: item.1 is defined and item.0.state|upper == 'PRESENT'
+  tags: start_service,services

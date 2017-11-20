@@ -1,0 +1,9 @@
+---
+# defaults file for oracle-grid-infrastructure
+
+oracle_gi:
+       version: 12.2.0.1
+oracle_base: /u01/app/oracle
+oracle_home_gi: "{{ oracle_base}}/product/{{ oracle_gi.version}}/grid"
+grid_binaries:
+       - {name: linuxx64_12201_grid_home.zip, path: /media/swrepo/ }

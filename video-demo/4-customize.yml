@@ -1,0 +1,11 @@
+- name: Customize databases
+  hosts: dbdemo
+  become: yes
+  become_user: oracle
+  roles:
+      - oracle-database-parameters
+      - oracle-database-tablespaces
+      - oracle-database-roles
+      - oracle-database-users
+      - oracle-database-services
+      - oracle-facts

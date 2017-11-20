@@ -1,0 +1,66 @@
+# SETUP:
+# alter system set db_create_file_dest='/u01/app/oracle/oradata' scope=both;
+# create pluggable database x1 admin user dbauser identified by dbaUser123;
+# alter pluggable database x1 open;
+# alter pluggable database x1 save state;
+
+# Verification
+
+- hosts: localhost
+  vars:
+    pdb_json_query: pdb[?OPEN_MODE=='READ WRITE'].NAME
+    exclude_pdb:
+      - PDB$SEED
+    oraclehost: orcl
+    oracle_env:
+#      ORACLE_HOME: /usr/lib/oracle/12.1/client64
+#      LD_LIBRARY_PATH: /usr/lib/oracle/12.1/client64/lib
+      nothing_to_see_here: just a placeholder
+  tasks:
+    - block:
+
+      - name: Gather target database facts
+        oracle_facts:
+          ### Target Oracle database connection information
+          hostname: "{{ oraclehost }}"
+          port: 1521
+          service_name: orcl12c
+          user: system
+          password: oracle
+        register: dbfacts
+
+      - name: Change Tuesdays maintenance window
+        oracle_jobwindow:
+          ### Target Oracle database connection information
+          hostname: "{{ oraclehost }}"
+          port: 1521
+          service_name: "{{ item }}"
+          user: system
+          password: oracle
+          ###
+          name: TUESDAY_WINDOW
+          repeat_interval: FREQ=WEEKLY;BYDAY=TUE;BYHOUR=4;BYMINUTE=0;BYSECOND=0
+          duration_hour: 4
+          resource_plan: DEFAULT_PLAN
+          comments: Tuesday window for maintenance tasks
+          state: enabled
+        with_items: "{{ dbfacts.ansible_facts | json_query(pdb_json_query) | difference(exclude_pdb) }}"
+
+      - name: Create a small test job in all PDBs
+        oracle_job:
+          ### Target Oracle database connection information
+          hostname: "{{ oraclehost }}"
+          port: 1521
+          service_name: "{{ item }}"
+          user: system
+          password: oracle
+          ###
+          state: present
+          name: SYSTEM.DO_NOT_DO_THIS
+          job_type: plsql_block
+          job_action: "begin null; end;"
+          repeat_interval: FREQ=HOURLY
+          logging_level: off
+        with_items: "{{ dbfacts.ansible_facts | json_query(pdb_json_query) | difference(exclude_pdb) }}"
+
+      environment: "{{ oracle_env }}"

@@ -1,0 +1,52 @@
+# SETUP:
+# create profile ldap_user limit password_life_time unlimited;
+# create role department_hr;
+# create role department_it;
+
+# yum install python-ldap
+# NOT PIP!!!! pip install ldap does not work
+
+# Verification
+# SELECT u.username, u.password, u.account_status, u.default_tablespace, u.initial_rsrc_consumer_group, LISTAGG(p.granted_role,', ') WITHIN GROUP (ORDER BY p.granted_role) roles FROM dba_users u LEFT OUTER JOIN dba_role_privs p ON p.grantee = u.username WHERE u.profile = 'LDAP_USER' GROUP BY u.username, u.password, u.account_status, u.default_tablespace, u.initial_rsrc_consumer_group;
+
+- hosts: localhost
+  vars:
+    oraclehost: orcl
+    adhost: ad
+    oracle_env:
+#      ORACLE_HOME: /usr/lib/oracle/12.1/client64
+#      LD_LIBRARY_PATH: /usr/lib/oracle/12.1/client64/lib
+      nothing_to_see_here: just a placeholder
+  tasks:
+    - name: oracle_ldapuser
+      oracle_ldapuser:
+        ### Target Oracle database connection information
+        hostname: "{{ oraclehost }}"
+        port: 1521
+        service_name: orcl
+        user: system
+        password: oracle
+        ### LDAP parameters
+        ldap_connect: "ldap://{{ adhost }}:389"
+        ldap_binddn: Administrator@ansible.test
+        ldap_bindpassword: Ansible2017
+        ldap_user_basedn: OU=Users,OU=Demo,DC=ansible,DC=test
+        # The following filter means that objectClass is person, member of one specific group, but not COMPUTER and account is not disabled
+        ldap_user_filter: (&(objectClass=person)(memberOf=CN=access_prod_db,OU=Groups,OU=Demo,DC=ansible,DC=test)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(!(objectClass=COMPUTER)))
+        ldap_username_attribute: sAMAccountName
+        ### New user parameters
+        #user_default_password: Oracle123
+        user_profile: LDAP_USER
+        user_default_tablespace: USERS
+        user_temp_tablespace: TEMP
+        user_quota_on_default_tbs_mb: 200
+        user_grants:
+          - create session
+          - create table
+        group_role_map:
+          - {dn: "CN=HR,OU=Groups,OU=Demo,DC=ansible,DC=test", group: "department_hr"}
+          - {dn: "CN=IT,OU=Groups,OU=Demo,DC=ansible,DC=test", group: "department_it"}
+        ### Removed user mode
+        deleted_user_mode: lock
+        ###
+      environment: "{{ oracle_env }}"

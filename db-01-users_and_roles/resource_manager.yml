@@ -1,0 +1,31 @@
+# SETUP:
+# Do it after AD SYNC demo
+
+# Verification:
+
+- hosts: localhost
+  vars:
+    oraclehost: orcl
+    oracle_env:
+#      ORACLE_HOME: /usr/lib/oracle/12.1/client64
+#      LD_LIBRARY_PATH: /usr/lib/oracle/12.1/client64/lib
+      nothing_to_see_here: just a placeholder
+  tasks:
+    - block:
+
+        - name: Manage consumer group for LDAP synced users
+          oracle_rsrc_consgroup:
+            ### Target Oracle database connection information
+            hostname: "{{ oraclehost }}"
+            port: 1521
+            service_name: orcl
+            user: system
+            password: oracle
+            ###
+            name: ad_user_consgroup
+            state: present
+            # NB! Oracle resource manager actually does not support user profile based mapping, so we expand it to user list
+            map_oracle_user_profile: LDAP_USER
+            grant_user_profile: LDAP_USER
+
+      environment: "{{ oracle_env }}"

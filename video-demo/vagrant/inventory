@@ -1,0 +1,21 @@
+[doag]
+doag-db1  ansible_ssh_host=192.168.9.230  ansible_ssh_user=vagrant ansible_ssh_pass=vagrant ansible_ssh_extra_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+[doag:vars]
+domain=doag.2017
+hostgroup=doag
+
+[jenkins]
+jenkins1  ansible_ssh_host=192.168.9.220  ansible_ssh_user=vagrant ansible_ssh_pass=vagrant ansible_ssh_extra_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+[jenkins:vars]
+domain=doag.2017
+hostgroup=jenkins
+
+[bitbucket]
+bitbucket1  ansible_ssh_host=192.168.9.210  ansible_ssh_user=vagrant ansible_ssh_pass=vagrant ansible_ssh_extra_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+[bitbucket:vars]
+domain=doag.2017
+hostgroup=bitbucket
+

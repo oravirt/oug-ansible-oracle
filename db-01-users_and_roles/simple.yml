@@ -1,0 +1,65 @@
+# SETUP:
+
+# Verification
+
+- hosts: localhost
+  vars:
+    oraclehost: orcl
+    oracle_env:
+#      ORACLE_HOME: /usr/lib/oracle/12.1/client64
+#      LD_LIBRARY_PATH: /usr/lib/oracle/12.1/client64/lib
+      nothing_to_see_here: just a placeholder
+    userlist:
+      - DEMO1
+      - DEMO2
+      - DEMO3
+    rolelist:
+      - ROLE1
+      - ROLE2
+  tasks:
+    - block:
+
+        - name: Manage roles
+          oracle_role:
+            ### Target Oracle database connection information
+            hostname: "{{ oraclehost }}"
+            port: 1521
+            service_name: orcl
+            user: system
+            password: oracle
+            ### New role parameters
+            role: "{{ item }}"
+            state: present
+          with_items: "{{ rolelist }}"
+
+        - name: Manage DEMO users
+          oracle_user:
+            ### Target Oracle database connection information
+            hostname: "{{ oraclehost }}"
+            port: 1521
+            service_name: orcl
+            user: system
+            password: oracle
+            ### New user parameters
+            schema: "{{ item }}"
+            schema_password: Demo123
+            grants:
+              - create session
+              - create table
+            state: present
+            update_password: on_create
+          with_items: "{{ userlist }}"
+
+        - name: Drop DEMO3 user
+          oracle_user:
+            ### Target Oracle database connection information
+            hostname: "{{ oraclehost }}"
+            port: 1521
+            service_name: orcl
+            user: system
+            password: oracle
+            ### User parameters
+            schema: DEMO3
+            state: absent
+
+      environment: "{{ oracle_env }}"

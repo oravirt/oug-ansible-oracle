@@ -1,0 +1,74 @@
+---
+
+oracle_stage_directory: /u01/stage
+oracle_base: /u01/app/oracle
+oracle_home: "{{ oracle_base }}/product/{{ oracle_db.version }}/db"
+oracle_home_gi: "{{ oracle_base }}/product/{{ oracle_gi.version }}/grid"
+install_packages: False
+user: system
+
+crs_diskgroup: crs
+oracle_gi:
+      version: 12.2.0.1
+      passwd: "{{ grid_passwd}}"
+
+oracle_db:
+      name: orcl
+      passwd: "{{ oracle_passwd }}"
+      version: 12.2.0.1
+      cdb: true
+      total_mb: 1024
+      characterset: AL32UTF8
+      ncharacterset: AL16UTF16
+      datafile_dest: DATA
+      recoveryfile_dest: DATA
+      listener_name: LISTENER
+      listener_protocols: TCP
+      listener_port: 1521
+      state: present
+      init_parameters:
+         - { name: db_recovery_file_dest_size, value: 60G, state: present, scope: both }
+         - { name: db_recovery_file_dest, value: '+FRA', state: present, scope: both}
+
+
+oracle_groups:
+     - oinstall
+     - dba
+
+oracle_user:
+      name: oracle
+      primgroup: oinstall
+      dbagroup: dba
+      othergroups: dba
+      passwd: "$6$0xHoAXXF$K75HKb64Hcb/CEcr3YEj2LGERi/U2moJgsCK.ztGxLsKoaXc4UBiNZPL0hlxB5ng6GL.gyipfQOOXplzcdgvD0"
+
+oracle_env:
+      ORACLE_HOME: "{{ oracle_home }}"
+      LD_LIBRARY_PATH: "{{ oracle_home }}/lib"
+
+filesystems:
+ - fs: /u01
+   vgname: vgora
+   lvname: lvora
+   device: /dev/sdb
+   fstype: ext4
+   lvsize: 100%FREE
+
+
+cdb_users_generic:
+     - schema: c##dba
+       schema_password: "{{dbauser_passwd}}"
+       state: present
+       default_tablespace: users
+       default_temp_tablespace: temp
+       grants:
+            - dba
+
+pdb_users_generic:
+    - schema: dbauser
+      schema_password: "{{dbauser_passwd}}"
+      state: present
+      default_tablespace: users
+      default_temp_tablespace: temp
+      grants:
+           - dba

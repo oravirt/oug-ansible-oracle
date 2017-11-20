@@ -1,0 +1,105 @@
+- name: Switch group to new database
+  hosts: all
+#  become: true
+#  become_method: sudo
+#  become_user: oracle
+  vars:
+    script_dir: /tmp/upgrade_switch
+    upgrade_metatable: DBAUSER.UPGRADE_12C_SCHEMAS
+    orcl_directory: TMP_UPGRADE
+  tasks:
+    # If it is not defined, then need to get it from command line somehow
+    - set_fact: group_name={{ replication_group }}
+      when: replication_group is defined
+
+    # Prepare files
+    - file: path={{ script_dir }} state=directory
+    - set_fact: templ_oracle_home={{ new.oraclehome }}
+    - set_fact: templ_oracle_sid={{ new.sid }}
+    - set_fact: temp_oracle_pdb={{ new.pdb }}
+    - template: src=templates/exec_sqlplus.sh dest={{ script_dir }}/exec_sqlplus_tgt.sh mode=0750
+    - set_fact: templ_oracle_home={{ old.oraclehome }}
+    - set_fact: templ_oracle_sid={{ old.sid }}
+    - set_fact: temp_oracle_pdb={{ old.pdb }}
+    - template: src=templates/exec_sqlplus.sh dest={{ script_dir }}/exec_sqlplus_src.sh mode=0750
+    - template: src=templates/wait_for_switch.sql dest={{ script_dir }}/wait_for_switch.sql mode=640
+    - template: src=templates/kill_sessions.sql dest={{ script_dir }}/kill_sessions.sql mode=640
+    - template: src=templates/flag_switchover.sql dest={{ script_dir }}/flag_switchover.sql mode=640
+    - template: src=templates/src_lock_accounts.sql dest={{ script_dir }}/src_lock_accounts.sql mode=640
+    - template: src=templates/create_directory.sql dest={{ script_dir }}/create_directory.sql mode=640
+    - template: src=templates/disable_jobs.sql dest={{ script_dir }}/disable_jobs.sql mode=640
+    - template: src=templates/scn.sql dest={{ script_dir }}/scn.sql mode=640
+    - template: src=templates/dump_service_list.sql dest={{ script_dir }}/dump_service_list.sql mode=640
+    - template: src=templates/service_action.sh dest={{ script_dir }}/service_action.sh mode=750
+    - template: src=templates/create_services.sh dest={{ script_dir }}/create_services.sh mode=750
+
+    # Figure out what replicat name is
+    - set_fact: replicat_name={{ new.replicat.prefix }}{{ group_name }}
+      when: new.replicat.name is undefined
+    - set_fact: replicat_name={{ new.replicat.name }}
+      when: new.replicat.name is defined
+    - template: src=templates/stop_replicat.sh dest={{ script_dir }}/stop_replicat.sh mode=750
+
+    - name: create temporary directory in source oracle
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh create_directory.sql"
+
+    - name: disable jobs
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh disable_jobs.sql"
+
+    # Dump list of services
+    - name: delete previous services file
+      file: path={{ script_dir }}/_services.lst state=absent
+    - name: dump service list
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh dump_service_list.sql"
+    - name: check that new services list file was created
+      shell: "[[ -f \"{{ script_dir }}/_services.lst\" ]]"
+
+    - pause: 
+    
+    # Stop services
+    - name: stop services on old
+      shell: "{{ script_dir }}/service_action.sh {{ old.oraclehome }} stop 0"
+      #ignore_errors: yes
+
+    # Recreate services as stopped on new database
+    - name: recreate services
+      shell: "{{ script_dir }}/create_services.sh"
+
+    # Lock database accounts on old
+    - name: delete previous unlock sql file
+      file: path={{ script_dir }}/_unlock_accounts.sql state=absent
+    - name: lock account in source
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh src_lock_accounts.sql"
+    - name: check that new unlock file was created
+      shell: "[[ -f \"{{ script_dir }}/_unlock_accounts.sql\" ]]"
+
+    # Kill sessions both by usernanme and service name
+    - name: kill sessions
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh kill_sessions.sql"
+
+    # Check that sessions are killed and mark switchover flag
+    - name: flag switchover
+      shell: "{{ script_dir }}/exec_sqlplus_src.sh flag_switchover.sql"
+      when: not dry_run
+
+    # Unlock accounts from target
+    - name: unlock accounts on target
+      shell: "{{ script_dir }}/exec_sqlplus_tgt.sh _unlock_accounts.sql"
+
+    # Wait for replication flag to be replicated
+    - name: wait for switchover
+      shell: "{{ script_dir }}/exec_sqlplus_tgt.sh wait_for_switch.sql"
+      when: not dry_run
+
+    # stop goldengate replicat
+    - name: stop replicat
+      shell: "{{ script_dir }}/stop_replicat.sh"
+      when: not dry_run
+
+    # get target DB scn
+    - name: get target SCN
+      shell: "{{ script_dir }}/exec_sqlplus_tgt.sh scn.sql"
+
+    # Start services
+    - name: start services on new
+      shell: "{{ script_dir }}/service_action.sh {{ new.oraclehome }} start 1"

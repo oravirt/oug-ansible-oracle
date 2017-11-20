@@ -1,0 +1,23 @@
+********************************************************************************
+Config sheet
+********************************************************************************
+
+Database name: {{ database.NAME  }}
+Version: {{ version }}
+oracle_home: {% for item in userenv %}{{ item.ORACLE_HOME }}{%endfor%}
+
+logmode: {{ database.LOG_MODE |lower}}
+
+These are the list of PDB's configured:
+{% for item in pdb %}
+{% if item.NAME and item.NAME != 'PDB$SEED'%}
+  - Name: {{item.NAME | lower}}, container_id: {{ item.CON_ID}}
+{% endif %}
+{% endfor %}
+
+Tablespaces:
+{% for item in tablespace %}
+{% if item.NAME and item.CON_ID != 2 %}
+  - Name: {{ item.NAME|lower }}, size: {{ item.SIZE_MB }} MB, bigfile: {{ item.BIGFILE | lower}}, container_id: {{ item.CON_ID }}
+{% endif %}
+{% endfor %}
