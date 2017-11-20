@@ -1,0 +1,5 @@
+[group1]
+host1    ansible_ssh_host=localhost
+
+[group2]
+host2    ansible_ssh_host=localhost
