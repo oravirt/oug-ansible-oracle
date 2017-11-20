@@ -1,0 +1,5 @@
+- name: test
+  hosts: group1
+  gather_facts: false
+  roles:
+     - unexpected

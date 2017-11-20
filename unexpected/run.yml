@@ -1,0 +1,5 @@
+- hosts: "{{ hg }}"
+  gather_facts: true
+  connection: local
+  roles:
+     - unexpected

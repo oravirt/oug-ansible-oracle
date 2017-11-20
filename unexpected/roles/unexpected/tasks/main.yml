@@ -1,0 +1,4 @@
+---
+
+- debug: var=var1
+#- debug: var=ansible_hostname
